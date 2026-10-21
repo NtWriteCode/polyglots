@@ -15,6 +15,10 @@ __pycache__/
 # Comment this line out if you'd rather commit the prebuilt polyglots.
 out/
 
+# ─────────────── Third-party samples (shipped encrypted) ───────────────
+# jar-epub's outside sample lives in external.zip (password "infected"); the build unpacks it here.
+samples-home-baked/jar-epub/external/
+
 # ──────────────── Compiled / intermediate binaries ─────────────────
 *.class
 *.o
