@@ -18,5 +18,5 @@ verify: build
 	./scripts/verify.sh $(TARGET)
 
 inputs: | $(WORK)
-	$(JAVAC) -d $(WORK) src/Demo.java
+	$(JAVAC) --release 8 -Xlint:-options -d $(WORK) src/Demo.java
 	$(JAR) cfm $(JARFILE) src/MANIFEST.MF -C $(WORK) Demo.class

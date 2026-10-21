@@ -28,7 +28,7 @@ verify: build
 	./scripts/verify.sh $(TARGET) Main
 	$(if $(EXT_TARGET),./scripts/verify.sh $(EXT_TARGET) org.example.GUI)
 
-# book.epub is a plain ebook; only the JAR is compiled.
+# book.epub is a plain ebook; only the JAR is compiled, for Java 8+ (the JRE most Windows machines have).
 inputs: | $(WORK)
-	$(JAVAC) --release 17 -d $(WORK) src/Main.java
+	$(JAVAC) --release 8 -Xlint:-options -d $(WORK) src/Main.java
 	$(JAR) cfm $(PROGRAM) src/MANIFEST.MF -C $(WORK) Main.class
