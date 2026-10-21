@@ -172,7 +172,7 @@ The "Rules" lines below matter only when you put your own files into `input/`.
 
 | File | Built from | Safe to run? |
 |---|---|---|
-| `out/polyglot.benign.epub` | `input/program.jar` (built from `src/Main.java`) + `input/book.epub` | yes |
+| `out/polyglot.benign.epub` | `input/program.jar` (built from `src/Main.java`) + `input/book.epub` (*Alice's Adventures in Wonderland*, public domain, [Project Gutenberg #11](https://www.gutenberg.org/ebooks/11)) | yes |
 | `out/polyglot.malicious.epub` | the outside sample in `external.zip` | **no, never run it** |
 
 - Try it: open `out/polyglot.benign.epub` in an ebook reader: the book. Run `java -jar out/polyglot.benign.epub`
