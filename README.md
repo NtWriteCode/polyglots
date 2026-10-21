@@ -163,7 +163,9 @@ The "Rules" lines below matter only when you put your own files into `input/`.
 
 - Input: `audio.mp3` and `document.docm` (a Word document with a macro).
 - Try it: `file out/polyglot.mp3` says audio (`ffprobe` reads 4 seconds of it). Open `polyglot.docm` in Microsoft Word: the macro document (LibreOffice refuses it).
-- Why: the file starts with the MP3's ID3 tag and audio frames; the DOCM is a ZIP, found from the end, and Word opens Office ZIPs with a stub in front.
+- Why: the file starts with the MP3's ID3 tag and audio frames; the DOCM is a ZIP, found from the end.
+  The build shifts the ZIP's offsets by the MP3's length, like a self-extracting archive (without that, Word offers to repair the file and the repaired copy does not run its macro),
+  and adds a short ZIP comment, which keeps `file` on "Audio file" instead of "Zip archive".
   Tools that route files by their first bytes send it to an audio branch, and audio is rarely scanned in depth.
 - Rules: the MP3 should start with an ID3 tag and the document should contain a macro (`word/vbaProject.bin`); the build warns otherwise.
 

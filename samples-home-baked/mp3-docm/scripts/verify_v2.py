@@ -4,12 +4,10 @@ verify_v2.py — multi-tool verification of an MP3+DOCM polyglot.
 
 Confirms the central research claim: same bytes, two verdicts.
 
-Note on LibreOffice: LibreOffice's OOXML loader insists the ZIP starts
-at file offset 0 and rejects any SFX-style prepended-stub form, regardless
-of whether internal CD offsets are patched. Microsoft Word does NOT have
-this restriction (documented behavior since Office 2007). The verifier
-therefore does not run LibreOffice for this variant; the talk demo will
-use Word on a Windows host.
+Note on LibreOffice: it identifies the file by its first bytes (the MP3) and
+refuses to load it, with or without patched offsets. The demo uses Word on
+Windows. Word needs the absolute offsets checked below: with SFX-style
+relative offsets it reports the package as corrupt and offers a repair.
 """
 from __future__ import annotations
 
@@ -72,6 +70,19 @@ def check_zip_office_parts(path: Path) -> tuple[bool, str]:
     return True, f"{len(names)} members, vbaProject.bin: {has_vba}"
 
 
+def check_zip_offsets_absolute(path: Path) -> tuple[bool, str]:
+    """Strict parsers (Word): every CD entry must point straight at its local header."""
+    data = path.read_bytes()
+    with zipfile.ZipFile(path) as zf:
+        infos = zf.infolist()
+    # zipfile adds the prepended length (concat) to header_offset; strict parsers do not.
+    eocd = data.rfind(b"PK\x05\x06")
+    cd_size, cd_off = int.from_bytes(data[eocd + 12:eocd + 16], "little"), int.from_bytes(data[eocd + 16:eocd + 20], "little")
+    concat = eocd - cd_size - cd_off
+    bad = [i.filename for i in infos if data[i.header_offset - concat:i.header_offset - concat + 4] != b"PK\x03\x04"]
+    return (concat == 0 and not bad), f"prepended-length correction needed: {concat} bytes, wrong offsets: {len(bad)}"
+
+
 def check_vba_macro_present(path: Path) -> tuple[bool, str]:
     """The macro carrier face: vbaProject.bin is non-empty OLE compound."""
     try:
@@ -129,6 +140,7 @@ def main() -> int:
         ("ID3v2 header at offset 0",             check_id3v2_at_offset_zero),
         ("ffprobe accepts as audio",             check_ffprobe_audio),
         ("ZIP + required Office parts",          check_zip_office_parts),
+        ("ZIP offsets absolute (Word)",          check_zip_offsets_absolute),
         ("VBA macro present (OLE bin)",          check_vba_macro_present),
         (".mp3 swap: libmagic+ffprobe audio",    check_extension_swap_audio),
         (".docm swap: py/unzip/7z all open",     check_extension_swap_zip),

