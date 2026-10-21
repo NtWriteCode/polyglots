@@ -1,0 +1,5 @@
+# Python packages the POC build/verify scripts import. Pillow is expected from the system
+# (python3-pil); the Makefile's venv reuses it via --system-site-packages.
+pillow
+pycdlib
+pyfatfs
