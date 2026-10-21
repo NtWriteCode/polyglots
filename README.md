@@ -168,15 +168,20 @@ The "Rules" lines below matter only when you put your own files into `input/`.
 - Rules: the MP3 should start with an ID3 tag and the document should contain a macro (`word/vbaProject.bin`); the build warns otherwise.
 
 ### JAR + EPUB
-`samples-home-baked/jar-epub` → `out/hertz.epub` (and `out/Philipp.Schott.epub`, see below)
+`samples-home-baked/jar-epub` → two results:
 
-- Input: `program.jar` and `book.epub`.
-- Try it: open `out/hertz.epub` in an ebook reader: the book. Copy it to `hertz.jar` and run `java -jar hertz.jar`: Java shows a message box.
+| File | Built from | Safe to run? |
+|---|---|---|
+| `out/polyglot.benign.epub` | `input/program.jar` (built from `src/Main.java`) + `input/book.epub` | yes |
+| `out/polyglot.malicious.epub` | the outside sample in `external.zip` | **no, never run it** |
+
+- Try it: open `out/polyglot.benign.epub` in an ebook reader: the book. Run `java -jar out/polyglot.benign.epub`
+  (the extension does not matter to Java): it prints `This came from the JAR side of the polyglot`, plus a message box when there is a display.
 - Why: both formats are ZIP archives, so the build merges the two into one archive that keeps the EPUB rules (`mimetype` stored first) and the JAR manifest.
 - Rules: the JAR needs a `Main-Class` line in its manifest; if both contain the same file name, the JAR's copy is kept.
 - **Outside sample:** `external.zip` (password `infected`) holds a JAR from elsewhere, named by its SHA-256, plus an ebook.
-  The build unpacks it into `external/` automatically and builds `out/Philipp.Schott.epub` from it.
-  The JAR looks like real malware: **never run it or `out/Philipp.Schott.epub`**. The build and the checks only read it.
+  The build unpacks it into `external/` automatically and builds `out/polyglot.malicious.epub` from it, to show the same trick on a real-world sample.
+  The JAR looks like real malware: **never run it or `out/polyglot.malicious.epub`**. The build and the checks only read it (`javap`, never `java`).
 
 ## Further reading
 
